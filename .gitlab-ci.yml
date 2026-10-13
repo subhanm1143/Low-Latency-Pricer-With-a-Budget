@@ -1,0 +1,26 @@
+stages: [build, test, latency]
+
+build:
+  stage: build
+  script:
+    - cmake -B build -DCMAKE_BUILD_TYPE=Release
+    - cmake --build build -j
+  artifacts:
+    paths: [build/]
+
+unit_tests:
+  stage: test
+  script:
+    - ./build/tests
+
+# The latency gate runs on a dedicated runner with isolated cores.
+#
+# On a shared runner the numbers are noise: a neighbouring job doing anything
+# at all moves the p99 by more than a real regression would. A gate that fires
+# on noise gets marked allow_failure within two weeks, and then it is not a
+# gate at all — it is a decoration that everyone has learned to ignore.
+latency_gate:
+  stage: latency
+  tags: [isolated-cores]
+  script:
+    - ./build/bench --budget-p99-ns 2500
